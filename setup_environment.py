@@ -1,0 +1,254 @@
+# Environment Configuration
+
+#!/usr/bin/env python3
+"""
+Virtual Fitting Room - Development Environment Setup
+This script will help you set up everything needed for development
+"""
+
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+def run_command(command, description):
+    """Run a shell command and handle errors"""
+    print(f"\n🔧 {description}...")
+    try:
+        subprocess.run(command, shell=True, check=True)
+        print(f"✅ {description} - Success!")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ {description} - Failed: {e}")
+        return False
+
+def check_python_version():
+    """Ensure Python 3.8+ is installed"""
+    version = sys.version_info
+    if version.major == 3 and version.minor >= 8:
+        print(f"✅ Python {version.major}.{version.minor}.{version.micro} detected")
+        return True
+    else:
+        print(f"❌ Python 3.8+ required, but found {version.major}.{version.minor}")
+        return False
+
+def setup_virtual_environment():
+    """Create and activate virtual environment"""
+    if not Path("venv").exists():
+        run_command("python -m venv venv", "Creating virtual environment")
+    
+    # Provide activation instructions
+    if os.name == 'nt':  # Windows
+        activate_cmd = "venv\\Scripts\\activate"
+    else:  # macOS/Linux
+        activate_cmd = "source venv/bin/activate"
+    
+    print(f"\n📌 To activate virtual environment, run: {activate_cmd}")
+    return True
+
+def install_dependencies():
+    """Install all required packages"""
+    print("\n📦 Installing dependencies...")
+    
+    # Update pip first
+    run_command("python -m pip install --upgrade pip --timeout 60 -i https://pypi.org/simple", "Upgrading pip")
+    
+    # Install core dependencies
+    dependencies = [
+        "fastapi==0.109.2",
+        "uvicorn==0.27.1",
+        "python-dotenv==1.0.0",
+        "python-multipart==0.0.9",
+        "pydantic==2.6.1",
+        "opencv-python==4.9.0.80",
+        "numpy==1.26.3",
+        "mediapipe==0.10.9",
+        "scikit-image==0.22.0",
+        "tensorflow==2.15.0",  # Adding TensorFlow
+        "scikit-learn==1.4.0",  # Adding scikit-learn
+        "matplotlib==3.8.2",    # For visualization
+        "Pillow==10.2.0",       # For image processing
+        "pytest==8.0.0",        # For testing
+        "httpx==0.26.0",        # For API testing
+    ]
+    
+    for dep in dependencies:
+        if not run_command(f"pip install {dep}", f"Installing {dep.split('==')[0]}"):
+            print(f"⚠️  Failed to install {dep}, continuing...")
+    
+    print("\n✅ All dependencies installed!")
+
+def create_test_directories():
+    """Create necessary directories for testing"""
+    directories = [
+        "test_images",
+        "test_images/input",
+        "test_images/output",
+        "data",
+        "data/models",
+        "data/size_charts",
+        "logs",
+    ]
+    
+    for dir_path in directories:
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
+    
+    print("✅ Created test directories")
+
+def create_env_file():
+    """Create .env file with default settings"""
+    env_content = """# Virtual Fitting Room Configuration
+PORT=8000
+ENV=development
+LOG_LEVEL=INFO
+
+# Model Configuration
+MODEL_PATH=data/models/
+CONFIDENCE_THRESHOLD=0.7
+
+# API Configuration
+API_KEY=your-api-key-here
+MAX_IMAGE_SIZE=10485760  # 10MB
+
+# Database (when we add it)
+# DATABASE_URL=sqlite:///./vto.db
+"""
+    
+    if not Path(".env").exists():
+        with open(".env", "w") as f:
+            f.write(env_content)
+        print("✅ Created .env file")
+    else:
+        print("ℹ️  .env file already exists")
+
+def download_test_image():
+    """Download a test image for initial testing"""
+    print("\n📸 Setting up test image...")
+    
+    test_image_code = '''
+import numpy as np
+import cv2
+
+# Create a simple test image with a person-like shape
+height, width = 600, 400
+image = np.ones((height, width, 3), dtype=np.uint8) * 255  # White background
+
+# Draw a simple person shape
+# Head
+cv2.circle(image, (200, 100), 30, (100, 100, 100), -1)
+
+# Body
+cv2.rectangle(image, (170, 130), (230, 300), (150, 150, 150), -1)
+
+# Arms
+cv2.rectangle(image, (130, 150), (170, 250), (150, 150, 150), -1)
+cv2.rectangle(image, (230, 150), (270, 250), (150, 150, 150), -1)
+
+# Legs
+cv2.rectangle(image, (170, 300), (195, 450), (150, 150, 150), -1)
+cv2.rectangle(image, (205, 300), (230, 450), (150, 150, 150), -1)
+
+# Save the test image
+cv2.imwrite("test_images/input/test_person.jpg", image)
+print("Created test_images/input/test_person.jpg")
+'''
+    
+    try:
+        exec(test_image_code)
+        print("✅ Created test image")
+    except Exception as e:
+        print(f"⚠️  Could not create test image: {e}")
+
+def test_mediapipe():
+    """Test if MediaPipe is working correctly"""
+    print("\n🧪 Testing MediaPipe installation...")
+    
+    test_code = '''
+import mediapipe as mp
+import cv2
+import numpy as np
+
+# Initialize MediaPipe
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(static_image_mode=True)
+
+# Create a simple test image
+test_img = np.ones((480, 640, 3), dtype=np.uint8) * 255
+
+# Try to process it
+results = pose.process(test_img)
+
+if results:
+    print("✅ MediaPipe is working!")
+else:
+    print("⚠️  MediaPipe initialized but no pose detected (this is normal for a blank image)")
+
+pose.close()
+'''
+    
+    try:
+        exec(test_code)
+    except Exception as e:
+        print(f"❌ MediaPipe test failed: {e}")
+
+def print_next_steps():
+    """Print what to do next"""
+    print("\n" + "="*60)
+    print("🎉 SETUP COMPLETE!")
+    print("="*60)
+    
+    print("\n📝 Next Steps:")
+    print("1. Activate your virtual environment:")
+    if os.name == 'nt':
+        print("   > venv\\Scripts\\activate")
+    else:
+        print("   > source venv/bin/activate")
+    
+    print("\n2. Run the app:")
+    print("   > python app.py")
+    
+    print("\n3. Test the API:")
+    print("   > Open http://localhost:8000/docs")
+    
+    print("\n4. Run our first measurement test:")
+    print("   > python test_first_measurement.py")
+    
+    print("\n💡 Pro tip: Always activate the virtual environment before working!")
+
+def main():
+    """Main setup function"""
+    print("🚀 Virtual Fitting Room - Development Setup")
+    print("="*60)
+    
+    # Check Python version
+    if not check_python_version():
+        print("\n❌ Please install Python 3.8 or higher")
+        return
+    
+    # Set up environment
+    setup_virtual_environment()
+    
+    print("\n⚠️  Please activate your virtual environment now, then run this script again!")
+    print("   If already activated, press Enter to continue...")
+    input()
+    
+    # Install dependencies
+    install_dependencies()
+    
+    # Create directories
+    create_test_directories()
+    
+    # Create .env file
+    create_env_file()
+    
+    # Create test image
+    download_test_image()
+    
+    # Test MediaPipe
+    test_mediapipe()
+    
+    # Print next steps
+    print_next_steps()
+
+if __name__ == "__main__":
+    main()
